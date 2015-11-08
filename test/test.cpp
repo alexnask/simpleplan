@@ -68,18 +68,18 @@ int main(int argc, char *argv[]) {
     nodeD->addArrow({ Arrow::Type::SS, 4, nodeD, nodeE });
 
     nodeE->addArrow({ Arrow::Type::SS, 0, nodeE, nodeB });
-    nodeE->addArrow({ Arrow::Type::FF, 2, nodeE, nodeF });
+    nodeE->addArrow({ Arrow::Type::FF, 2, nodeE, nodeF }); // When combined with commenting this,
     nodeE->addArrow({ Arrow::Type::SF, 1, nodeE, nodeH });
 
     nodeF->addArrow({ Arrow::Type::FF, 3, nodeF, nodeI });
+    //nodeF->addArrow({ Arrow::Type::FF, 2, nodeF, nodeE }); // uncommenting this is a cycle
 
     nodeG->addArrow({ Arrow::Type::FS, 0, nodeG, nodeI });
 
     nodeH->addArrow({ Arrow::Type::SS, -1, nodeH, nodeI });
 
-    // This does nothing atm
-    graph.checkGraph();
-
+    graph.finalize();
+    graph.check();
     graph.doWork();
 
     uglyPrint(graph);

@@ -20,6 +20,8 @@ namespace cpm {
         Node* operator -> () const;
 
         Node* get() const;
+
+        bool operator == (const NodeRef& other) const;
     };
 
 }

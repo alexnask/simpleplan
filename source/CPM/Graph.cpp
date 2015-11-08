@@ -2,6 +2,10 @@
 
 #include <algorithm>
 
+#include <stdexcept>
+
+#include <iostream>
+
 namespace sp {
 namespace cpm {
 
@@ -18,17 +22,7 @@ namespace cpm {
         return NodeRef(nodes.size() - 1, nodes);
     }
 
-    void Graph::checkGraph() const {
-        // If this returns without throwing, doWork should always complete
-
-        // TODO: cycle detection
-        // Start nodes should have a set early start value
-        // ?...
-    }
-
-    void Graph::doWork() {
-        // OK, here we go.
-        // First, we need to find all our starts and ends.
+    void Graph::finalize() {
         int i = 0;
 
         for (const auto& node: nodes) {
@@ -40,7 +34,42 @@ namespace cpm {
 
             i++;
         }
+    }
 
+    void Graph::check() const {
+        // If this returns without throwing, doWork should always complete
+
+        // TODO: cycle detection
+        // Start nodes should have a set early start value
+        // ?...
+
+        // Build a stack while recursively traversing the graph
+        // (pop the stack when going back)
+        // If we ever get to a value that is already in the stack, we have a cycle
+
+        std::vector<NodeRef> stack;
+        for (auto start: starts) {
+            cycleCheck(start, stack);
+        }
+    }
+
+    // This could blow up our stack, we should find a way to do it iteratively
+    void Graph::cycleCheck(NodeRef start, std::vector<NodeRef>& stack) const {
+        stack.emplace_back(start);
+
+        for (auto& arrow: start->children) {
+            if (std::find(stack.begin(), stack.end(), arrow.to) != stack.end()) {
+                // Cycle detected!
+                throw std::logic_error("Cycle detected around node " + arrow.to->name);
+            }
+
+            cycleCheck(arrow.to, stack);
+        }
+
+        stack.pop_back();
+    }
+
+    void Graph::doWork() {
         // Now, we need to start our "left-to-right" analysis.
         // We start from our starts, propagate early start values using the arrows.
         // If a Node has multiple parents, it needs to wait and get values from all of them and chose the maximum propagated early start.

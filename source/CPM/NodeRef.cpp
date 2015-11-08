@@ -18,5 +18,9 @@ namespace cpm {
     Node* NodeRef::get() const {
         return nodes.data() + index;
     }
+
+    bool NodeRef::operator == (const NodeRef& other) const {
+        return index == other.index && &nodes == &other.nodes;
+    }
 }
 }
