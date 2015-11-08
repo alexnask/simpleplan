@@ -1,10 +1,7 @@
 #include <simpleplan/CPM/Graph.hpp>
 
 #include <algorithm>
-
 #include <stdexcept>
-
-#include <iostream>
 
 namespace sp {
 namespace cpm {
