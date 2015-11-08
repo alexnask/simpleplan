@@ -78,11 +78,8 @@ namespace cpm {
             propagateRight(start, candidates);
         }
 
-        // TODO: Does this actually always work in one pass?
-        // I think it should if there is no cycle
-
         // Let's do right to left!
-        // Start out by clearing our candidates vector
+        // Start out by clearing our candidate vectors
         for (auto& vec: candidates) {
             vec.clear();
         }
