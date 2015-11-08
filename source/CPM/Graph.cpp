@@ -36,10 +36,6 @@ namespace cpm {
     void Graph::check() const {
         // If this returns without throwing, doWork should always complete
 
-        // TODO: cycle detection
-        // Start nodes should have a set early start value
-        // ?...
-
         // Build a stack while recursively traversing the graph
         // (pop the stack when going back)
         // If we ever get to a value that is already in the stack, we have a cycle
@@ -47,6 +43,10 @@ namespace cpm {
         std::vector<NodeRef> stack;
         for (auto start: starts) {
             cycleCheck(start, stack);
+
+            if (start->earlyStart < 0) {
+                throw std::logic_error("Starting node " + start->name + " has invalid early start value");
+            }
         }
     }
 
