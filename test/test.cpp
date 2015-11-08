@@ -1,8 +1,17 @@
 #include <iostream>
 
+#include <cstdio>
+#include <climits>
+
 #include <simpleplan/CPM/Graph.hpp>
 
 using namespace sp::cpm;
+
+int getChar(FILE *fhandle) {
+    int c = fgetc(fhandle);
+
+    return c > CHAR_MAX ? (c - (UCHAR_MAX + 1)) : c;
+}
 
 std::string typeToString(Arrow::Type type) {
     std::string result;
@@ -23,6 +32,21 @@ std::string typeToString(Arrow::Type type) {
     return result;
 }
 
+Arrow::Type stringToType(std::string str) {
+    if (str == "FS") {
+        return Arrow::Type::FS;
+    } else if (str == "SF") {
+        return Arrow::Type::SF;
+    } else if(str == "SS") {
+        return Arrow::Type::SS;
+    } else if(str == "FF") {
+        return Arrow::Type::FF;
+    }
+
+    // We never should get here
+    return Arrow::Type::FS;
+}
+
 void uglyPrint(const Graph& graph) {
     for (const auto& node: graph.nodes) {
         std::cout << "---------------" << std::endl;
@@ -41,42 +65,57 @@ int main(int argc, char *argv[]) {
 
     Graph graph = {};
 
-    // Let's build something simple by hand
+    std::string filename;
 
-    auto nodeA = graph.addNode({3, "A"});
-    auto nodeB = graph.addNode({4, "B"});
-    auto nodeC = graph.addNode({2, "C"});
-    auto nodeD = graph.addNode({1, "D"});
-    auto nodeE = graph.addNode({5, "E"});
-    auto nodeF = graph.addNode({3, "F"});
-    auto nodeG = graph.addNode({4, "G"});
-    auto nodeH = graph.addNode({3, "H"});
-    auto nodeI = graph.addNode({6, "I"});
+    if (argc > 1) {
+        filename = argv[1];
+    } else {
+        filename = "test.bin";
+    }
 
-    nodeA->earlyStart = 0;
+    FILE *fhandle = fopen(filename.c_str(), "rb");
 
-    nodeA->addArrow({ Arrow::Type::FF, 3, nodeA, nodeB });
-    nodeA->addArrow({ Arrow::Type::SS, 2, nodeA, nodeC });
-    nodeA->addArrow({ Arrow::Type::FS, 0, nodeA, nodeD });
+    // Ok, simple format we will be reading (don't feel like dealing with endianess right now):
+    // 1 byte gives us the length of our node vector
+    // For each node, 1 byte gives us the length of the name, followed by the name itself, 1 byte duration and 1 byte early start value
+    // Then, for each node again, 1 byte gives us the arrow amount and for each arrow, we have a 2 byte type ("FF", "SS", "FS" or "SF"), 1 byte value and 1 byte dest node index
 
-    nodeB->addArrow({ Arrow::Type::FS, 3, nodeB, nodeG });
-    nodeB->addArrow({ Arrow::Type::SF, -1, nodeB, nodeF });
+    int nodeLen = getChar(fhandle);
 
-    nodeC->addArrow({ Arrow::Type::FS, 1, nodeC, nodeB });
-    nodeC->addArrow({ Arrow::Type::SF, 3, nodeC, nodeE });
+    {
+        std::vector<NodeRef> newNodes;
 
-    nodeD->addArrow({ Arrow::Type::SS, 4, nodeD, nodeE });
+        for (int i = 0; i < nodeLen; i++) {
+            int nameLen = getChar(fhandle);
 
-    nodeE->addArrow({ Arrow::Type::SS, 0, nodeE, nodeB });
-    nodeE->addArrow({ Arrow::Type::FF, 2, nodeE, nodeF }); // When combined with commenting this,
-    nodeE->addArrow({ Arrow::Type::SF, 1, nodeE, nodeH });
+            std::string name(nameLen, 0);
+            fread(&name[0], 1, nameLen, fhandle);
 
-    nodeF->addArrow({ Arrow::Type::FF, 3, nodeF, nodeI });
-    //nodeF->addArrow({ Arrow::Type::FF, 2, nodeF, nodeE }); // uncommenting this is a cycle
+            int duration = getChar(fhandle);
+            int earlyStart = getChar(fhandle);
 
-    nodeG->addArrow({ Arrow::Type::FS, 0, nodeG, nodeI });
+            newNodes.emplace_back(graph.addNode({ duration, name }));
+            newNodes.back()->earlyStart = earlyStart;
+        }
 
-    nodeH->addArrow({ Arrow::Type::SS, -1, nodeH, nodeI });
+        for (int i = 0; i < nodeLen - 1; i++) {
+            int arrowLen = getChar(fhandle);
+
+            for (int j = 0; j < arrowLen; j++) {
+                std::string typeStr(2, 0);
+                fread(&typeStr[0], 1, 2, fhandle);
+
+                Arrow::Type type = stringToType(typeStr);
+
+                int value = getChar(fhandle);
+                int destIndex = getChar(fhandle);
+
+                newNodes[i]->addArrow({ type, value, newNodes[i], newNodes[destIndex] });
+            }
+        }
+    }
+
+    fclose(fhandle);
 
     graph.finalize();
     graph.check();
